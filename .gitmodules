@@ -1,3 +1,0 @@
-[submodule "posenet"]
-	path = project-posenet
-	url = https://github.com/google-coral/project-posenet.git
