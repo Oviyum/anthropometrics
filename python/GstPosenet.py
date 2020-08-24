@@ -13,7 +13,7 @@ from ctypes import *
 from typing import Tuple
 import os
 from fractions import Fraction
-
+import threading
 import numpy as np
 import math
 from PIL import Image
@@ -90,7 +90,7 @@ class GstPosenet(GstBase.BaseTransform):
         distance = np.sqrt((x1-x2)**2 + (y1-y2)**2 + (z1-z2)**2)
         return distance
     
-    def pose(self, img):
+    def pose(self, img, poses, i):
         newimg = Image.fromarray(img, 'RGB')
         #newimg.save('1.jpg')
         newimg = newimg.resize((1281, 721), Image.NEAREST)
@@ -116,6 +116,7 @@ class GstPosenet(GstBase.BaseTransform):
                 if label == 'left ankle':
                     leftankle = keypoint.yx
                 #cv2.imwrite('4.jpg', img)
+        poses[i] = (lefteye, leftankle)
         return (lefteye, leftankle)
 
 
@@ -160,8 +161,14 @@ class GstPosenet(GstBase.BaseTransform):
             limg = A[:, :self.width//2 - 1]
             rimg = A[:, self.width//2:]
             img = A
-            lpose = self.pose(limg)
-            rpose = self.pose(rimg)
+            poses = []
+            t = threading.Thread(target=pose, args=(self, rimg, poses, 1))
+            t.start()
+            self.pose(limg, poses, 0)
+            t.join()
+
+            lpose = poses[0]
+            rpose = poses[1]
             
             if lpose[0] is not None and rpose[0] is not None:
                 ([ly1, lx1], [ly2, lx2]) = lpose
