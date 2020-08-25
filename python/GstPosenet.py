@@ -68,7 +68,8 @@ class GstPosenet(GstBase.BaseTransform):
         self.f = open('data.txt', 'w')
         self.data = []
         self.avg = 0
-        self.alpha = 0.5
+        self.alpha = 0.1
+        self.var = 0
     def calculate_height(self, lx1, ly1, lx2, ly2, rx1, ry1, rx2, ry2):
 
         points2d = np.array([[lx1, ly1, lx1-rx1, 1], [lx2, ly2, lx2-rx2, 1]], dtype=np.float32).T
@@ -121,6 +122,13 @@ class GstPosenet(GstBase.BaseTransform):
 
 
     def ema(self, h):
+
+        self.var = (1-self.alpha)*(self.var + self.alpha*((h - self.avg)**2))
+        lim = 2 * np.sqrt(self.var)
+        if h > self.avg:
+            h = min(h, self.avg + lim)
+        else:
+            h = max(h, self.avg - lim)
         if self.avg == 0:
             self.avg = h
         else:
@@ -162,7 +170,7 @@ class GstPosenet(GstBase.BaseTransform):
             rimg = A[:, self.width//2:]
             img = A
             poses = []
-            t = threading.Thread(target=pose, args=(self, rimg, poses, 1))
+            t = threading.Thread(target=self.pose, args=(rimg, poses, 1))
             t.start()
             self.pose(limg, poses, 0)
             t.join()
